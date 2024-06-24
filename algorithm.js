@@ -29,7 +29,7 @@ function findRhymingWords(filePath, word, limit = Infinity) {
         }
     });
 
-    stream.on('end', () => {
+    stream.on('close', () => {
         // preventing any potential valid rhyming words from being missed.
         if (buffer.trim() && matchingWords.length < limit) {
             const currentWord = buffer.trim();
@@ -68,7 +68,7 @@ function getRhymePart(word) {
 
 
 // Example usage
-const filePath = '/Users/oz/Desktop/University of London/Algorithms and Data Structures I/PoetryAssistant/wordlist.txt'; // Path to your sorted .txt file
-const inputWord = 'slim';      // The word to find rhymes for
-const limit = 5;              // Optional limit for the number of words required
+const filePath = './wordlist.txt'; // Path to your sorted .txt file
+const inputWord = 'up';      // The word to find rhymes for
+const limit = 8;              // Optional limit for the number of words required
 findRhymingWords(filePath, inputWord);
