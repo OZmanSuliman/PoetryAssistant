@@ -1,54 +1,74 @@
 const fs = require('fs');
-const readline = require('readline');
 
-const findRhymingWords = (filePath, word, limit = Infinity) => {
-    // Helper function to extract the rhyme part of the word (last syllable)
-    const getRhymePart = (word) => {
-        const vowels = 'aeiouy';
-        let index = word.length - 1;
+const CHUNK_SIZE = 1024; // Number of bytes to read at a time
 
-        while (index >= 0 && !vowels.includes(word[index])) {
-            index--;
-        }
-
-        while (index >= 0 && vowels.includes(word[index])) {
-            index--;
-        }
-
-        return word.slice(index + 1);
-    };
-
-    const rhymePart = getRhymePart(word);
+function findRhymingWords(filePath, word, limit = Infinity) {
+    const rhymePart = getRhymePart(word); // Get the rhyme part of the word
     const matchingWords = [];
-    let count = 0;
+    let buffer = ''; //temporary storage area where chunks of data are stored as they are read from the file.
 
-    const readInterface = readline.createInterface({
-        input: fs.createReadStream(filePath),
-        output: process.stdout,
-        console: false
+    const stream = fs.createReadStream(filePath, { encoding: 'utf8', highWaterMark: 1024 });
+
+    stream.on('data', (chunk) => {
+        //  When reading a file in chunks, it is possible for a line to be split between two chunks. 
+        buffer += chunk;
+        let words = buffer.split('\n');
+        buffer = words.pop();
+
+        for (let word of words) {
+            if (matchingWords.length >= limit) {
+                stream.close();
+                return;
+            }
+
+            // check if a word ends with the same rhyme part as the input word
+            const currentWord = word.trim();
+            if (currentWord.endsWith(rhymePart)) {
+                matchingWords.push(currentWord);
+            }
+        }
     });
 
-    readInterface.on('line', (line) => {
-        if (count >= limit) {
-            readInterface.close();
-            return;
+    stream.on('end', () => {
+        // preventing any potential valid rhyming words from being missed.
+        if (buffer.trim() && matchingWords.length < limit) {
+            const currentWord = buffer.trim();
+            if (currentWord.endsWith(rhymePart)) {
+                matchingWords.push(currentWord);
+            }
         }
 
-        const currentWord = line.trim();
-        if (currentWord.endsWith(rhymePart)) {
-            matchingWords.push(currentWord);
-            count++;
-        }
-    });
-
-    readInterface.on('close', () => {
         console.log(`Words that rhyme with "${word}":`);
         console.log(matchingWords.join(', '));
+        console.log(matchingWords.length);
+    });
+
+    stream.on('error', (err) => {
+        console.error(`Error reading file: ${err.message}`);
     });
 };
 
+// Helper function to extract the rhyme part of the word (last syllable)
+function getRhymePart(word) {
+    const vowels = 'aeiouy';
+    let index = word.length - 1;
+
+    while (index >= 0 && !vowels.includes(word[index])) {
+        index--;
+    }
+
+    while (index >= 0 && vowels.includes(word[index])) {
+        index--;
+    }
+
+    return word.slice(index + 1);
+};
+
+
+
+
 // Example usage
 const filePath = '/Users/oz/Desktop/University of London/Algorithms and Data Structures I/PoetryAssistant/wordlist.txt'; // Path to your sorted .txt file
-const inputWord = 'mail';      // The word to find rhymes for
+const inputWord = 'slim';      // The word to find rhymes for
 const limit = 5;              // Optional limit for the number of words required
-findRhymingWords(filePath, inputWord, limit);
+findRhymingWords(filePath, inputWord);
